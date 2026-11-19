@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Suivi Vols Malaisie 2027 • CDG ⇄ KUL</title>
+
+  <!-- Balises PWA / Épinglage sur écran d'accueil mobile (iOS & Android) -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Vols Malaisie" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#f8fafc" />
+  <meta name="description" content="Suivi automatique des prix des vols Paris CDG ⇄ Kuala Lumpur KUL pour juillet 2027 (Malaysia Airlines & Singapore Airlines)." />
+
+  <!-- Tailwind CSS & Chart.js (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+  <!-- Police Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif']
+          }
+        }
+      }
+    };
+  </script>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans antialiased min-h-screen selection:bg-sky-100 selection:text-sky-900">
+
+  <!-- En-tête compact et fixe -->
+  <header class="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3.5">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <!-- Identité du voyage -->
+        <div class="flex items-start sm:items-center gap-3">
+          <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-sky-600 to-cyan-500 flex items-center justify-center text-white shadow-md shadow-sky-600/20 shrink-0">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+            </svg>
+          </div>
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-2">
+              <h1 class="text-base sm:text-lg font-extrabold tracking-tight text-slate-900">
+                Suivi Vols Malaisie 2027
+              </h1>
+              <span id="countdown-badge" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200 tabular-nums">
+                J---
+              </span>
+            </div>
+            <p class="text-xs sm:text-sm font-semibold text-slate-700 mt-0.5">
+              Paris (CDG) ⇄ Kuala Lumpur (KUL)
+            </p>
+            <div class="flex flex-wrap items-center gap-1.5 mt-1 text-[11px] sm:text-xs text-slate-500">
+              <span>09 – 30 Juillet 2027 • 3 passagers</span>
+              <span class="hidden sm:inline text-slate-300">|</span>
+              <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-medium">MH • SQ</span>
+              <span class="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-medium">Cible ≤ 2 700 €</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bouton Actualiser & Horodatage -->
+        <div class="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+          <div class="text-left sm:text-right">
+            <div class="flex items-center sm:justify-end gap-1.5 text-[11px] font-medium text-slate-500">
+              <span id="live-dot" class="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span id="sync-status-label">Synchronisation…</span>
+            </div>
+            <div id="last-sync-time" class="text-[11px] text-slate-400 tabular-nums mt-0.5">
+              —
+            </div>
+          </div>
+
+          <button id="btn-refresh" type="button" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 active:scale-[0.98] text-white text-xs sm:text-sm font-semibold shadow-sm shadow-sky-600/20 transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
+            <svg id="refresh-icon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+            </svg>
+            <span>Actualiser</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Contenu principal -->
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+    <!-- Bannière d'erreur (masquée par défaut) -->
+    <div id="error-banner" class="hidden rounded-2xl bg-rose-50 border border-rose-200 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm" role="alert">
+      <div class="flex items-start gap-3">
+        <div class="w-9 h-9 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0 mt-0.5">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
+        </div>
+        <div>
+          <h2 class="text-sm font-bold text-rose-900">Impossible de charger les données en direct</h2>
+          <p id="error-message" class="text-xs text-rose-700 mt-0.5">Vérifiez votre connexion internet et réessayez.</p>
+        </div>
+      </div>
+      <button id="btn-retry" type="button" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold transition self-start sm:self-center shrink-0">
+        Réessayer
+      </button>
+    </div>
+
+    <!-- État de chargement (Skeleton) -->
+    <div id="loading-skeleton" class="space-y-6 animate-pulse">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="h-36 rounded-2xl bg-white border border-slate-200/80 p-5 space-y-3">
+          <div class="h-3 w-28 bg-slate-200 rounded-full"></div>
+          <div class="h-8 w-36 bg-slate-200 rounded-lg"></div>
+          <div class="h-3 w-44 bg-slate-100 rounded-full"></div>
+        </div>
+        <div class="h-36 rounded-2xl bg-white border border-slate-200/80 p-5 space-y-3">
+          <div class="h-3 w-32 bg-slate-200 rounded-full"></div>
+          <div class="h-8 w-28 bg-slate-200 rounded-lg"></div>
+          <div class="h-2 w-full bg-slate-100 rounded-full"></div>
+        </div>
+        <div class="h-36 rounded-2xl bg-white border border-slate-200/80 p-5 space-y-3">
+          <div class="h-3 w-28 bg-slate-200 rounded-full"></div>
+          <div class="h-8 w-32 bg-slate-200 rounded-lg"></div>
+          <div class="h-3 w-36 bg-slate-100 rounded-full"></div>
+        </div>
+        <div class="h-36 rounded-2xl bg-white border border-slate-200/80 p-5 space-y-3">
+          <div class="h-3 w-24 bg-slate-200 rounded-full"></div>
+          <div class="h-8 w-32 bg-slate-200 rounded-lg"></div>
+          <div class="h-3 w-40 bg-slate-100 rounded-full"></div>
+        </div>
+      </div>
+      <div class="h-80 rounded-2xl bg-white border border-slate-200/80 p-5">
+        <div class="h-4 w-56 bg-slate-200 rounded-full mb-6"></div>
+        <div class="h-56 w-full bg-slate-100 rounded-xl"></div>
+      </div>
+    </div>
+
+    <!-- Contenu du Dashboard (affiché une fois chargé) -->
+    <div id="dashboard-content" class="hidden space-y-6">
+
+      <!-- 1. Grille des 4 cartes KPI -->
+      <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" aria-label="Indicateurs clés">
+
+        <!-- KPI 1 : Dernier prix relevé -->
+        <article class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 flex flex-col justify-between">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Dernier prix relevé</span>
+            <span id="kpi-trend-badge" class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600">—</span>
+          </div>
+          <div class="mt-3">
+            <div class="flex items-baseline gap-2 flex-wrap">
+              <span id="kpi-current-price" class="text-3xl font-extrabold tracking-tight text-slate-900 tabular-nums">—</span>
+              <span id="kpi-current-pp" class="text-xs font-semibold text-slate-500 tabular-nums">—</span>
+            </div>
+            <div class="mt-1.5 flex items-center gap-1.5 text-xs">
+              <span id="kpi-current-delta" class="font-semibold text-slate-500">—</span>
+              <span class="text-slate-300">•</span>
+              <span id="kpi-current-date" class="text-slate-500">—</span>
+            </div>
+          </div>
+          <div id="kpi-current-airlines" class="mt-3 pt-2.5 border-t border-slate-100 text-xs font-medium text-slate-600 truncate" title="">
+            —
+          </div>
+        </article>
+
+        <!-- KPI 2 : Écart vs Objectif 2 700 € -->
+        <article class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 flex flex-col justify-between">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Écart vs Objectif</span>
+            <span id="kpi-budget-badge" class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700">2 700 €</span>
+          </div>
+          <div class="mt-3">
+            <div class="flex items-baseline gap-2 flex-wrap">
+              <span id="kpi-budget-diff" class="text-3xl font-extrabold tracking-tight tabular-nums">—</span>
+            </div>
+            <p id="kpi-budget-subtext" class="text-xs text-slate-500 mt-1">Cible : 900 € / passager</p>
+          </div>
+          <div class="mt-3 pt-2.5 border-t border-slate-100">
+            <div class="flex items-center justify-between text-[11px] font-medium text-slate-500 mb-1.5">
+              <span>Proximité du seuil</span>
+              <span id="kpi-budget-pct" class="tabular-nums font-semibold">—</span>
+            </div>
+            <div class="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+              <div id="kpi-budget-bar" class="h-full rounded-full bg-amber-500 transition-all duration-500" style="width: 0%"></div>
+            </div>
+          </div>
+        </article>
+
+        <!-- KPI 3 : Record bas observé -->
+        <article class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 flex flex-col justify-between">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Record bas observé</span>
+            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700">Minimum</span>
+          </div>
+          <div class="mt-3">
+            <div class="flex items-baseline gap-2 flex-wrap">
+              <span id="kpi-min-price" class="text-3xl font-extrabold tracking-tight text-emerald-600 tabular-nums">—</span>
+              <span id="kpi-min-pp" class="text-xs font-semibold text-slate-500 tabular-nums">—</span>
+            </div>
+            <p id="kpi-min-date" class="text-xs text-slate-500 mt-1.5">Relevé le —</p>
+          </div>
+          <div id="kpi-min-airlines" class="mt-3 pt-2.5 border-t border-slate-100 text-xs font-medium text-slate-600 truncate" title="">
+            —
+          </div>
+        </article>
+
+        <!-- KPI 4 : Statistiques -->
+        <article class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 flex flex-col justify-between">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Statistiques</span>
+            <span id="kpi-count-badge" class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-50 text-sky-700">0 relevé</span>
+          </div>
+          <div class="mt-3">
+            <div class="text-[11px] font-medium text-slate-400 uppercase tracking-wide">Prix moyen observé</div>
+            <div class="flex items-baseline gap-2 mt-0.5">
+              <span id="kpi-avg-price" class="text-3xl font-extrabold tracking-tight text-slate-900 tabular-nums">—</span>
+            </div>
+          </div>
+          <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
+            <span class="text-slate-500">Durée dernier vol :</span>
+            <span id="kpi-last-duration" class="font-bold text-slate-800 tabular-nums">—</span>
+          </div>
+        </article>
+
+      </section>
+
+      <!-- 2. Graphique interactif Chart.js -->
+      <section class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+          <div>
+            <h2 class="text-base font-bold text-slate-900">Évolution du prix total vs Objectif 2 700 €</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Relevés quotidiens automatiques (3 passagers • 2 adultes, 1 enfant)</p>
+          </div>
+          <div class="inline-flex p-1 rounded-xl bg-slate-100 self-start">
+            <button type="button" data-range="all" class="range-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-sky-700 shadow-xs transition">Tout</button>
+            <button type="button" data-range="30" class="range-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition">30 j</button>
+            <button type="button" data-range="7" class="range-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition">7 j</button>
+          </div>
+        </div>
+
+        <div id="chart-empty-state" class="hidden h-64 flex flex-col items-center justify-center text-center text-slate-500 bg-slate-50 rounded-xl border border-dashed border-slate-200 p-6">
+          <p class="text-sm font-semibold text-slate-700">Aucun tarif valide enregistré pour le moment</p>
+          <p class="text-xs text-slate-500 mt-1">La courbe apparaîtra dès le premier relevé de prix dans le Google Sheet.</p>
+        </div>
+
+        <div id="chart-wrapper" class="relative w-full h-72 sm:h-80">
+          <canvas id="priceChart"></canvas>
+        </div>
+      </section>
+
+      <!-- 3. Barre de raccourcis rapides -->
+      <section aria-label="Raccourcis de réservation et source">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <a href="https://www.malaysiaairlines.com/" target="_blank" rel="noopener noreferrer" class="group flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:border-sky-300 hover:shadow-md transition">
+            <div class="min-w-0">
+              <div class="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-sky-700 truncate">Malaysia Airlines</div>
+              <div class="text-[11px] text-slate-500 mt-0.5 truncate">Achat direct MH</div>
+            </div>
+            <span class="w-8 h-8 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0 group-hover:bg-sky-600 group-hover:text-white transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" /></svg>
+            </span>
+          </a>
+
+          <a href="https://www.singaporeair.com/" target="_blank" rel="noopener noreferrer" class="group flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:border-sky-300 hover:shadow-md transition">
+            <div class="min-w-0">
+              <div class="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-sky-700 truncate">Singapore Airlines</div>
+              <div class="text-[11px] text-slate-500 mt-0.5 truncate">Achat direct SQ</div>
+            </div>
+            <span class="w-8 h-8 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0 group-hover:bg-sky-600 group-hover:text-white transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" /></svg>
+            </span>
+          </a>
+
+          <a href="https://www.google.com/travel/flights?hl=fr&curr=EUR" target="_blank" rel="noopener noreferrer" class="group flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:border-sky-300 hover:shadow-md transition">
+            <div class="min-w-0">
+              <div class="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-sky-700 truncate">Google Flights</div>
+              <div class="text-[11px] text-slate-500 mt-0.5 truncate">Comparer horaires</div>
+            </div>
+            <span class="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0 group-hover:bg-sky-600 group-hover:text-white transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" /></svg>
+            </span>
+          </a>
+
+          <a href="https://docs.google.com/spreadsheets/d/1YU3Z3LxpyU9z9_8sYS4m4zpZ-apRIZLh6ChUMBjeWa0/edit" target="_blank" rel="noopener noreferrer" class="group flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:border-emerald-300 hover:shadow-md transition">
+            <div class="min-w-0">
+              <div class="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-emerald-700 truncate">Google Sheet</div>
+              <div class="text-[11px] text-slate-500 mt-0.5 truncate">Données source</div>
+            </div>
+            <span class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" /></svg>
+            </span>
+          </a>
+        </div>
+      </section>
+
+      <!-- 4. Tableau d'historique chronologique -->
+      <section class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="text-base font-bold text-slate-900">Historique des relevés</h2>
+            <p class="text-xs text-slate-500">Du plus récent au plus ancien</p>
+          </div>
+          <span id="table-count-label" class="text-xs font-medium text-slate-500">0 ligne</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse min-w-[680px]">
+            <thead>
+              <tr class="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                <th class="py-3 pl-5 pr-3">Date</th>
+                <th class="py-3 px-3">Prix Total</th>
+                <th class="py-3 px-3">/ Pers.</th>
+                <th class="py-3 px-3">Évolution</th>
+                <th class="py-3 px-3">Compagnies</th>
+                <th class="py-3 px-3">Durée</th>
+                <th class="py-3 pl-3 pr-5 text-right">Tendance</th>
+              </tr>
+            </thead>
+            <tbody id="history-tbody" class="divide-y divide-slate-100 text-xs sm:text-sm">
+              <!-- Rempli dynamiquement en JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <footer class="max-w-6xl mx-auto px-4 sm:px-6 py-6 text-center text-xs text-slate-400">
+    Suivi automatisé n8n • Alertes Telegram sous 2 700 € • Paris CDG ⇄ Kuala Lumpur KUL (2027)
+  </footer>
+
+  <script>
+    // =========================================================================
+    // CONFIGURATION FIXE (Zéro configuration requise côté utilisateur)
+    // =========================================================================
+    const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRII_w6ajbEe5_Gbx4F14rmIXLRdzarWalRRMTvbEhCAv_1gDiPOF6vyuxefZJDiYLDEBA-MCeAhzgu/pub?gid=0&single=true&output=csv';
+    const TARGET_BUDGET = 2700;
+    const PASSENGERS = 3;
+    const DEPARTURE_DATE = new Date('2027-07-09T00:00:00+02:00');
+
+    let validRows = [];
+    let allHistoryRows = [];
+    let currentRange = 'all';
+    let priceChartInstance = null;
+
+    // =========================================================================
+    // UTILITAIRES DE FORMATAGE
+    // =========================================================================
+    function formatEur(value) {
+      if (value === null || value === undefined || Number.isNaN(value)) return '—';
+      return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Math.round(value)) + ' €';
+    }
+
+    function formatSignedEur(value) {
+      if (value === null || value === undefined || Number.isNaN(value)) return '—';
+      const rounded = Math.round(value);
+      const formatted = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Math.abs(rounded));
+      if (rounded > 0) return `+${formatted} €`;
+      if (rounded < 0) return `-${formatted} €`;
+      return '0 €';
+    }
+
+    function formatDuration(minutes) {
+      const m = Number(minutes);
+      if (!m || Number.isNaN(m) || m <= 0) return '—';
+      const h = Math.floor(m / 60);
+      const rem = Math.round(m % 60);
+      return `${h}h ${String(rem).padStart(2, '0')}`;
+    }
+
+    function formatDateFr(dateStr) {
+      if (!dateStr) return '—';
+      const clean = String(dateStr).trim().slice(0, 10);
+      const parts = clean.split('-');
+      if (parts.length !== 3) return dateStr;
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+
+    function formatSyncClock(date) {
+      return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    function escapeHtml(text) {
+      return String(text || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // Compte à rebours J-XXX avant le 09/07/2027
+    function updateCountdown() {
+      const badge = document.getElementById('countdown-badge');
+      const now = new Date();
+      const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const depMidnight = new Date(2027, 6, 9); // Mois 6 = Juillet
+      const diffDays = Math.ceil((depMidnight - todayMidnight) / (1000 * 60 * 60 * 24));
+
+      if (diffDays > 0) {
+        badge.textContent = `J-${diffDays}`;
+      } else if (diffDays === 0) {
+        badge.textContent = 'Jour J !';
+      } else {
+        badge.textContent = 'Voyage en cours';
+      }
+    }
+
+    // =========================================================================
+    // PARSEUR CSV ROBUSTE (gère les champs entre guillemets contenant des virgules)
+    // =========================================================================
+    function parseCSVLine(line) {
+      const fields = [];
+      let current = '';
+      let inQuotes = false;
+
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+          if (inQuotes && line[i + 1] === '"') {
+            current += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (ch === ',' && !inQuotes) {
+          fields.push(current);
+          current = '';
+        } else {
+          current += ch;
+        }
+      }
+      fields.push(current);
+      return fields;
+    }
+
+    function parseNumber(raw) {
+      if (raw === null || raw === undefined) return null;
+      const cleaned = String(raw).replace(/\s/g, '').replace(',', '.').trim();
+      if (!cleaned) return null;
+      const num = Number(cleaned);
+      return Number.isFinite(num) ? num : null;
+    }
+
+    function parseCSV(csvText) {
+      const lines = csvText.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim().length > 0);
+      if (lines.length < 2) return [];
+
+      const headers = parseCSVLine(lines[0]).map(h => h.trim());
+      const rows = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const values = parseCSVLine(lines[i]);
+        const rawObj = {};
+        headers.forEach((h, idx) => {
+          rawObj[h] = (values[idx] !== undefined ? values[idx] : '').trim();
+        });
+
+        const prixTotal = parseNumber(rawObj.prix_total);
+        const isValidPrice = prixTotal !== null && prixTotal > 0;
+        const prixPP = parseNumber(rawObj.prix_par_personne);
+        const dernierPrix = parseNumber(rawObj.dernier_prix);
+        const deltaEuro = parseNumber(rawObj.delta_euro);
+        const dureeTotale = parseNumber(rawObj.duree_totale);
+
+        rows.push({
+          date_exec: rawObj.date_exec || '',
+          timestamp_iso: rawObj.timestamp_iso || '',
+          prix_total: isValidPrice ? prixTotal : null,
+          prix_par_personne: isValidPrice ? (prixPP || Math.round(prixTotal / PASSENGERS)) : null,
+          dernier_prix: dernierPrix,
+          delta_euro: deltaEuro,
+          compagnies: rawObj.compagnies || '—',
+          duree_totale: dureeTotale,
+          statut_tendance: rawObj.statut_tendance || (isValidPrice ? 'RELEVE' : 'INDISPONIBLE'),
+          alerte_baisse: String(rawObj.alerte_baisse).toLowerCase() === 'true',
+          isValidPrice
+        });
+      }
+
+      return rows;
+    }
+
+    // =========================================================================
+    // BADGES DE TENDANCE
+    // =========================================================================
+    function getTrendStyle(statut) {
+      const s = String(statut || '').toUpperCase();
+      if (s === 'BAISSE') {
+        return { label: 'Baisse', classes: 'bg-emerald-50 text-emerald-700 border border-emerald-200' };
+      }
+      if (s === 'HAUSSE') {
+        return { label: 'Hausse', classes: 'bg-rose-50 text-rose-700 border border-rose-200' };
+      }
+      if (s === 'STABLE') {
+        return { label: 'Stable', classes: 'bg-slate-100 text-slate-600 border border-slate-200' };
+      }
+      if (s === 'PREMIER_RELEVE') {
+        return { label: '1er relevé', classes: 'bg-sky-50 text-sky-700 border border-sky-200' };
+      }
+      if (s === 'AUCUN_SOUS_SEUIL' || s === 'INDISPONIBLE') {
+        return { label: 'Non dispo', classes: 'bg-amber-50 text-amber-700 border border-amber-200' };
+      }
+      return { label: statut || '—', classes: 'bg-slate-100 text-slate-600 border border-slate-200' };
+    }
+
+    // =========================================================================
+    // RENDU DES 4 CARTES KPI
+    // =========================================================================
+    function renderKPIs(rows) {
+      if (!rows.length) {
+        document.getElementById('kpi-current-price').textContent = '—';
+        document.getElementById('kpi-current-pp').textContent = '';
+        document.getElementById('kpi-current-delta').textContent = 'En attente de relevé';
+        document.getElementById('kpi-current-date').textContent = '—';
+        document.getElementById('kpi-current-airlines').textContent = 'Aucune donnée valide';
+        document.getElementById('kpi-budget-diff').textContent = '—';
+        document.getElementById('kpi-min-price').textContent = '—';
+        document.getElementById('kpi-min-pp').textContent = '';
+        document.getElementById('kpi-min-date').textContent = '—';
+        document.getElementById('kpi-min-airlines').textContent = '—';
+        document.getElementById('kpi-avg-price').textContent = '—';
+        document.getElementById('kpi-count-badge').textContent = '0 relevé';
+        document.getElementById('kpi-last-duration').textContent = '—';
+        return;
+      }
+
+      const latest = rows[rows.length - 1];
+      const prices = rows.map(r => r.prix_total);
+      const minPrice = Math.min(...prices);
+      const avgPrice = Math.round(prices.reduce((sum, p) => sum + p, 0) / prices.length);
+      const minRow = rows.find(r => r.prix_total === minPrice) || latest;
+
+      // --- KPI 1 : Dernier prix relevé ---
+      document.getElementById('kpi-current-price').textContent = formatEur(latest.prix_total);
+      document.getElementById('kpi-current-pp').textContent = `(${formatEur(latest.prix_par_personne)} / pers.)`;
+      document.getElementById('kpi-current-date').textContent = formatDateFr(latest.date_exec);
+
+      const trendStyle = getTrendStyle(latest.statut_tendance);
+      const trendEl = document.getElementById('kpi-trend-badge');
+      trendEl.textContent = trendStyle.label;
+      trendEl.className = `px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${trendStyle.classes}`;
+
+      const deltaEl = document.getElementById('kpi-current-delta');
+      if (latest.delta_euro !== null && latest.delta_euro < 0) {
+        deltaEl.textContent = `${formatSignedEur(latest.delta_euro)} vs préc.`;
+        deltaEl.className = 'font-semibold text-emerald-600';
+      } else if (latest.delta_euro !== null && latest.delta_euro > 0) {
+        deltaEl.textContent = `${formatSignedEur(latest.delta_euro)} vs préc.`;
+        deltaEl.className = 'font-semibold text-rose-600';
+      } else {
+        deltaEl.textContent = '0 € vs préc.';
+        deltaEl.className = 'font-semibold text-slate-500';
+      }
+
+      const airlineEl = document.getElementById('kpi-current-airlines');
+      airlineEl.textContent = latest.compagnies;
+      airlineEl.title = latest.compagnies;
+
+      // --- KPI 2 : Écart vs Objectif 2 700 € ---
+      const diffBudget = latest.prix_total - TARGET_BUDGET;
+      const diffEl = document.getElementById('kpi-budget-diff');
+      const budgetBadge = document.getElementById('kpi-budget-badge');
+      const budgetSubtext = document.getElementById('kpi-budget-subtext');
+      const budgetBar = document.getElementById('kpi-budget-bar');
+      const budgetPct = document.getElementById('kpi-budget-pct');
+
+      if (diffBudget <= 0) {
+        diffEl.textContent = formatSignedEur(diffBudget);
+        diffEl.className = 'text-3xl font-extrabold tracking-tight text-emerald-600 tabular-nums';
+        budgetBadge.textContent = 'Objectif atteint !';
+        budgetBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200';
+        budgetSubtext.textContent = 'Tarif sous le budget cible de 2 700 €';
+        budgetBar.className = 'h-full rounded-full bg-emerald-500 transition-all duration-500';
+        budgetBar.style.width = '100%';
+        budgetPct.textContent = '100 %';
+      } else {
+        const isClose = diffBudget <= 300;
+        diffEl.textContent = `+${new Intl.NumberFormat('fr-FR').format(Math.round(diffBudget))} €`;
+        diffEl.className = `text-3xl font-extrabold tracking-tight tabular-nums ${isClose ? 'text-amber-600' : 'text-rose-600'}`;
+        budgetBadge.textContent = isClose ? 'Proche cible' : 'Au-dessus';
+        budgetBadge.className = isClose
+          ? 'px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200'
+          : 'px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200';
+        budgetSubtext.textContent = `Reste ${formatEur(diffBudget)} à gagner (cible 2 700 €)`;
+
+        const proximity = Math.max(10, Math.min(99, Math.round((TARGET_BUDGET / latest.prix_total) * 100)));
+        budgetBar.className = `h-full rounded-full transition-all duration-500 ${isClose ? 'bg-amber-500' : 'bg-rose-500'}`;
+        budgetBar.style.width = `${proximity}%`;
+        budgetPct.textContent = `${proximity} %`;
+      }
+
+      // --- KPI 3 : Record bas observé ---
+      document.getElementById('kpi-min-price').textContent = formatEur(minPrice);
+      document.getElementById('kpi-min-pp').textContent = `(${formatEur(Math.round(minPrice / PASSENGERS))} / pers.)`;
+      document.getElementById('kpi-min-date').textContent = `Relevé le ${formatDateFr(minRow.date_exec)}`;
+      const minAirlineEl = document.getElementById('kpi-min-airlines');
+      minAirlineEl.textContent = minRow.compagnies;
+      minAirlineEl.title = minRow.compagnies;
+
+      // --- KPI 4 : Statistiques ---
+      document.getElementById('kpi-avg-price').textContent = formatEur(avgPrice);
+      document.getElementById('kpi-count-badge').textContent = `${rows.length} relevé${rows.length > 1 ? 's' : ''}`;
+      document.getElementById('kpi-last-duration').textContent = formatDuration(latest.duree_totale);
+    }
+
+    // =========================================================================
+    // RENDU DU GRAPHIQUE CHART.JS
+    // =========================================================================
+    function renderChart(rows) {
+      const emptyEl = document.getElementById('chart-empty-state');
+      const wrapperEl = document.getElementById('chart-wrapper');
+
+      if (!rows.length) {
+        emptyEl.classList.remove('hidden');
+        wrapperEl.classList.add('hidden');
+        return;
+      }
+
+      emptyEl.classList.add('hidden');
+      wrapperEl.classList.remove('hidden');
+
+      let filtered = [...rows];
+      if (currentRange !== 'all') {
+        filtered = filtered.slice(-Number(currentRange));
+      }
+
+      const labels = filtered.map(r => formatDateFr(r.date_exec));
+      const prices = filtered.map(r => r.prix_total);
+      const targetSeries = filtered.map(() => TARGET_BUDGET);
+
+      // Calcul automatique des bornes Y pour que la ligne 2 700 € soit toujours visible
+      const minVal = Math.min(TARGET_BUDGET, ...prices);
+      const maxVal = Math.max(TARGET_BUDGET, ...prices);
+      const yMin = Math.max(0, Math.floor((minVal - 200) / 100) * 100);
+      const yMax = Math.ceil((maxVal + 200) / 100) * 100;
+
+      const canvas = document.getElementById('priceChart');
+      const ctx = canvas.getContext('2d');
+
+      const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+      gradient.addColorStop(0, 'rgba(2, 132, 199, 0.22)');
+      gradient.addColorStop(1, 'rgba(2, 132, 199, 0.0)');
+
+      if (priceChartInstance) {
+        priceChartInstance.destroy();
+      }
+
+      priceChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Prix total relevé (3 pers.)',
+              data: prices,
+              borderColor: '#0284c7',
+              backgroundColor: gradient,
+              borderWidth: 3,
+              fill: true,
+              tension: 0.28,
+              pointRadius: filtered.length > 25 ? 3 : 5,
+              pointHoverRadius: 7,
+              pointBackgroundColor: '#ffffff',
+              pointBorderColor: '#0284c7',
+              pointBorderWidth: 2.5
+            },
+            {
+              label: 'Objectif cible (2 700 €)',
+              data: targetSeries,
+              borderColor: '#10b981',
+              borderWidth: 2,
+              borderDash: [6, 6],
+              pointRadius: 0,
+              pointHoverRadius: 0,
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: {
+              position: 'top',
+              align: 'start',
+              labels: {
+                usePointStyle: true,
+                boxWidth: 8,
+                padding: 16,
+                color: '#475569',
+                font: { family: 'Inter', size: 12, weight: '500' }
+              }
+            },
+            tooltip: {
+              backgroundColor: '#0f172a',
+              titleColor: '#f8fafc',
+              bodyColor: '#e2e8f0',
+              padding: 12,
+              cornerRadius: 12,
+              displayColors: true,
+              callbacks: {
+                label: (context) => {
+                  if (context.datasetIndex === 1) {
+                    return ` Objectif cible : 2 700 €`;
+                  }
+                  return ` Prix total : ${formatEur(context.parsed.y)}`;
+                },
+                afterBody: (items) => {
+                  const idx = items[0]?.dataIndex;
+                  const row = filtered[idx];
+                  if (!row) return [];
+                  return [
+                    `Soit / pers. : ${formatEur(row.prix_par_personne)}`,
+                    `Compagnies : ${row.compagnies}`,
+                    `Durée : ${formatDuration(row.duree_totale)}`
+                  ];
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: {
+                color: '#64748b',
+                font: { family: 'Inter', size: 11 },
+                maxRotation: 0,
+                autoSkipPadding: 16
+              }
+            },
+            y: {
+              min: yMin,
+              max: yMax,
+              grid: { color: 'rgba(148, 163, 184, 0.18)' },
+              ticks: {
+                color: '#64748b',
+                font: { family: 'Inter', size: 11 },
+                callback: (val) => `${new Intl.NumberFormat('fr-FR').format(val)} €`
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // =========================================================================
+    // RENDU DU TABLEAU HISTORIQUE
+    // =========================================================================
+    function renderTable(rows) {
+      const tbody = document.getElementById('history-tbody');
+      const countLabel = document.getElementById('table-count-label');
+      countLabel.textContent = `${rows.length} ligne${rows.length > 1 ? 's' : ''}`;
+
+      if (!rows.length) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="py-10 text-center text-xs text-slate-400">
+              Aucun relevé disponible dans l'historique.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      const reversed = [...rows].reverse();
+      tbody.innerHTML = reversed.map(row => {
+        const isUnderTarget = row.isValidPrice && row.prix_total <= TARGET_BUDGET;
+        const priceClass = isUnderTarget
+          ? 'font-bold text-emerald-600'
+          : row.isValidPrice
+            ? 'font-bold text-slate-900'
+            : 'text-slate-400';
+
+        let deltaHtml = '<span class="text-slate-400">—</span>';
+        if (row.isValidPrice && row.delta_euro !== null) {
+          if (row.delta_euro < 0) {
+            deltaHtml = `<span class="font-semibold text-emerald-600">${formatSignedEur(row.delta_euro)}</span>`;
+          } else if (row.delta_euro > 0) {
+            deltaHtml = `<span class="font-semibold text-rose-600">${formatSignedEur(row.delta_euro)}</span>`;
+          } else {
+            deltaHtml = `<span class="text-slate-400">0 €</span>`;
+          }
+        }
+
+        const trend = getTrendStyle(row.statut_tendance);
+
+        return `
+          <tr class="hover:bg-slate-50/90 transition">
+            <td class="py-3.5 pl-5 pr-3 font-medium text-slate-700 whitespace-nowrap tabular-nums">${escapeHtml(formatDateFr(row.date_exec))}</td>
+            <td class="py-3.5 px-3 whitespace-nowrap tabular-nums ${priceClass}">${row.isValidPrice ? formatEur(row.prix_total) : '—'}</td>
+            <td class="py-3.5 px-3 text-slate-500 whitespace-nowrap tabular-nums">${row.isValidPrice ? formatEur(row.prix_par_personne) : '—'}</td>
+            <td class="py-3.5 px-3 whitespace-nowrap tabular-nums">${deltaHtml}</td>
+            <td class="py-3.5 px-3 text-slate-700 max-w-[220px] truncate" title="${escapeHtml(row.compagnies)}">${escapeHtml(row.compagnies)}</td>
+            <td class="py-3.5 px-3 text-slate-500 whitespace-nowrap tabular-nums">${formatDuration(row.duree_totale)}</td>
+            <td class="py-3.5 pl-3 pr-5 text-right whitespace-nowrap">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${trend.classes}">
+                ${escapeHtml(trend.label)}
+              </span>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // =========================================================================
+    // CHARGEMENT DES DONNÉES EN DIRECT DEPUIS GOOGLE SHEETS (CSV)
+    // =========================================================================
+    async function loadLiveData() {
+      const btnRefresh = document.getElementById('btn-refresh');
+      const refreshIcon = document.getElementById('refresh-icon');
+      const statusLabel = document.getElementById('sync-status-label');
+      const liveDot = document.getElementById('live-dot');
+      const errorBanner = document.getElementById('error-banner');
+      const skeleton = document.getElementById('loading-skeleton');
+      const content = document.getElementById('dashboard-content');
+
+      btnRefresh.disabled = true;
+      refreshIcon.classList.add('animate-spin');
+      statusLabel.textContent = 'Actualisation…';
+      liveDot.className = 'w-2 h-2 rounded-full bg-sky-500 animate-pulse';
+      errorBanner.classList.add('hidden');
+
+      try {
+        const cacheBusterUrl = `${CSV_URL}&_t=${Date.now()}`;
+        const response = await fetch(cacheBusterUrl, { cache: 'no-store' });
+
+        if (!response.ok) {
+          throw new Error(`Erreur HTTP ${response.status} lors de la lecture du Google Sheet.`);
+        }
+
+        const csvText = await response.text();
+        const parsedRows = parseCSV(csvText);
+
+        allHistoryRows = parsedRows;
+        validRows = parsedRows.filter(r => r.isValidPrice);
+
+        renderKPIs(validRows);
+        renderChart(validRows);
+        renderTable(allHistoryRows);
+
+        skeleton.classList.add('hidden');
+        content.classList.remove('hidden');
+
+        liveDot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+        statusLabel.textContent = 'Google Sheet en direct';
+        document.getElementById('last-sync-time').textContent = `Synchro à ${formatSyncClock(new Date())}`;
+      } catch (err) {
+        console.error('Erreur chargement CSV :', err);
+        skeleton.classList.add('hidden');
+        document.getElementById('error-message').textContent =
+          err.message || 'Impossible de joindre le fichier CSV publié de Google Sheets.';
+        errorBanner.classList.remove('hidden');
+
+        liveDot.className = 'w-2 h-2 rounded-full bg-rose-500';
+        statusLabel.textContent = 'Erreur de synchro';
+      } finally {
+        btnRefresh.disabled = false;
+        refreshIcon.classList.remove('animate-spin');
+      }
+    }
+
+    // =========================================================================
+    // INITIALISATION ET INTERACTIONS
+    // =========================================================================
+    document.addEventListener('DOMContentLoaded', () => {
+      updateCountdown();
+
+      // Actualisation manuelle & bouton Réessayer
+      document.getElementById('btn-refresh').addEventListener('click', loadLiveData);
+      document.getElementById('btn-retry').addEventListener('click', loadLiveData);
+
+      // Sélecteur de période du graphique
+      document.querySelectorAll('.range-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          currentRange = btn.dataset.range;
+          document.querySelectorAll('.range-btn').forEach(b => {
+            b.className = 'range-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition';
+          });
+          btn.className = 'range-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-sky-700 shadow-xs transition';
+          renderChart(validRows);
+        });
+      });
+
+      // Chargement initial automatique
+      loadLiveData();
+    });
+  </script>
+</body>
+</html>
