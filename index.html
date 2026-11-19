@@ -899,5 +899,10 @@
       loadLiveData();
     });
   </script>
+  <script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/vol_malaisie/sw.js');
+  }
+</script>
 </body>
 </html>
