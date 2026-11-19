@@ -1,0 +1,18 @@
+{
+  "name": "Suivi Vols Malaisie 2027",
+  "short_name": "Vols Malaisie",
+  "description": "Suivi des tarifs Paris (CDG) - Kuala Lumpur (KUL) en direct",
+  "start_url": "/vol_malaisie/",
+  "scope": "/vol_malaisie/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0284c7",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
